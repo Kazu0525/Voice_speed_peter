@@ -714,51 +714,135 @@ typingInterval = interval;
 }
 }
 
-// 結果計算（改良版 - タイピング予測変換対応）
+// 結果計算（修正版 - 入力文字数基準の計算方法）
 function calculateResults(inputText, sampleText, duration) {
-const inputChars = inputText.length;
+const inputChars = inputText.trim().length;
 const speed = Math.round((inputChars / duration) * 60);
 
-// タイピングの場合は意味的な比較を行う
+// 入力が空の場合の処理
+if (inputChars === 0) {
+return {
+speed: 0,
+accuracy: 0,
+errors: 0,
+inputLength: 0,
+duration: duration
+};
+}
+
+// 入力された文字数分だけを比較対象とする
+const inputLength = inputText.length;
+const compareLength = Math.min(inputLength, sampleText.length);
+
+let correctChars = 0;
 let errors = 0;
 
-// 単語レベルでの比較（予測変換を考慮）
-const inputWords = inputText.replace(/[、。！？]/g, ' ').split(/\s+/).filter(word => word.length > 0);
-const sampleWords = sampleText.replace(/[、。！？]/g, ' ').split(/\s+/).filter(word => word.length > 0);
+// 入力された範囲で文字を比較
+for (let i = 0; i < compareLength; i++) {
+if (inputText[i] === sampleText[i]) {
+correctChars++;
+} else {
+errors++;
+}
+}
 
-// より柔軟な誤差計算
-errors = calculateSmartErrors(inputWords, sampleWords);
+// 入力が正解より長い場合、余分な文字は全て誤入力
+if (inputLength > sampleText.length) {
+errors += (inputLength - sampleText.length);
+}
 
-const maxLength = Math.max(inputWords.length, sampleWords.length);
-const accuracy = maxLength > 0 ? Math.max(0, Math.round(((maxLength - errors) / maxLength) * 100)) : 0;
+// 正確率は入力した文字数を基準に計算
+const accuracy = inputLength > 0 ? Math.round((correctChars / inputLength) * 100) : 0;
 
 return {
 speed: speed,
-accuracy: Math.max(0, accuracy),
+accuracy: Math.max(0, Math.min(100, accuracy)),
 errors: errors,
 inputLength: inputChars,
 duration: duration
 };
 }
 
-// スマートエラー計算（予測変換を考慮）
-function calculateSmartErrors(inputWords, sampleWords) {
+// より柔軟な計算方法（オプション）- 単語レベルでの比較も可能
+function calculateResultsAdvanced(inputText, sampleText, duration) {
+const inputChars = inputText.trim().length;
+const speed = Math.round((inputChars / duration) * 60);
+
+// 入力が空の場合
+if (inputChars === 0) {
+return {
+speed: 0,
+accuracy: 0,
+errors: 0,
+inputLength: 0,
+duration: duration
+};
+}
+
+// 2つの計算方法を使って、より適切な方を選択
+const charResult = calculateByCharacter(inputText, sampleText);
+const wordResult = calculateByWord(inputText, sampleText);
+
+// 入力文字数が少ない場合は文字レベル、多い場合は単語レベルを重視
+const useWordLevel = inputText.length > 100;
+const result = useWordLevel ? wordResult : charResult;
+
+return {
+speed: speed,
+accuracy: Math.max(0, Math.min(100, result.accuracy)),
+errors: result.errors,
+inputLength: inputChars,
+duration: duration
+};
+}
+
+// 文字レベルでの計算
+function calculateByCharacter(inputText, sampleText) {
+let correctChars = 0;
 let errors = 0;
-const maxLength = Math.max(inputWords.length, sampleWords.length);
+const minLength = Math.min(inputText.length, sampleText.length);
 
-for (let i = 0; i < maxLength; i++) {
-const inputWord = inputWords[i] || '';
-const sampleWord = sampleWords[i] || '';
-
-if (inputWord !== sampleWord) {
-// 同じ意味の単語かチェック（例：ひらがな・カタカナ・漢字の違い）
-if (!isSimilarWord(inputWord, sampleWord)) {
+for (let i = 0; i < minLength; i++) {
+if (inputText[i] === sampleText[i]) {
+correctChars++;
+} else {
 errors++;
 }
 }
+
+// 長さの差
+const lengthDiff = Math.abs(inputText.length - sampleText.length);
+errors += lengthDiff;
+
+const accuracy = sampleText.length > 0 ? Math.round((correctChars / sampleText.length) * 100) : 0;
+
+return { accuracy, errors };
 }
 
-return errors;
+// 単語レベルでの計算
+function calculateByWord(inputText, sampleText) {
+const inputWords = inputText.replace(/[、。！？]/g, ' ').split(/\s+/).filter(word => word.length > 0);
+const sampleWords = sampleText.replace(/[、。！？]/g, ' ').split(/\s+/).filter(word => word.length > 0);
+
+let correctWords = 0;
+let errors = 0;
+const minLength = Math.min(inputWords.length, sampleWords.length);
+
+for (let i = 0; i < minLength; i++) {
+if (isSimilarWord(inputWords[i], sampleWords[i])) {
+correctWords++;
+} else {
+errors++;
+}
+}
+
+// 単語数の差
+const wordDiff = Math.abs(inputWords.length - sampleWords.length);
+errors += wordDiff;
+
+const accuracy = sampleWords.length > 0 ? Math.round((correctWords / sampleWords.length) * 100) : 0;
+
+return { accuracy, errors };
 }
 
 // 類似単語判定（予測変換での表記揺れを許容）
@@ -913,4 +997,3 @@ window.addEventListener('load', init);
 </script>
 </body>
 </html>
-
