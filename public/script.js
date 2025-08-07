@@ -32,59 +32,69 @@ document.addEventListener('DOMContentLoaded', () => {
   function playSound(sound) {
     if (!isMuted) {
       sounds[sound].currentTime = 0;
-      sounds[sound].play();
+      sounds[sound].play().catch(e => console.error("Error playing sound:", e));
     }
   }
 
-  // Game State
-  let score = 0;
-  let time = 60;
-  let combo = 0;
-  let maxCombo = 0;
-  let correctCount = 0;
-  let missCount = 0;
-  let timerInterval = null;
+  // --- Game State & Mic Permission ---
   let gameActive = false;
-  let currentQuestion = '';
-  let currentDifficulty = 'normal'; // Default difficulty
+  let currentDifficulty = 'normal';
+  // ... other game state variables
+  let score = 0, time = 60, combo = 0, maxCombo = 0, correctCount = 0, missCount = 0, timerInterval = null, currentQuestion = '';
 
-  // Speech Recognition Setup
+  const isMicGranted = () => localStorage.getItem('micGranted') === 'true';
+  const setMicGranted = () => localStorage.setItem('micGranted', 'true');
+
+  // --- Speech Recognition Setup ---
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition;
 
-  if (SpeechRecognition) {
-    micStatusEl.style.display = 'block';
-    recognition = new SpeechRecognition();
-    recognition.lang = 'ja-JP';
-    recognition.interimResults = true;
-    recognition.continuous = false; // Process one phrase at a time
-  } else {
+  if (!SpeechRecognition) {
     micStatusEl.innerHTML = '<p>お使いのブラウザは音声認識に対応していません。</p>';
-    // Can't disable a button that doesn't exist, the UI will just not proceed.
     return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.lang = 'ja-JP';
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  // --- Initialization ---
+  function initialize() {
+    if (isMicGranted()) {
+      showDifficultySelector();
+    } else {
+      micStatusEl.style.display = 'block';
+    }
+  }
+
+  function showDifficultySelector() {
+    micStatusEl.style.display = 'none';
+    difficultySelectorEl.style.display = 'block';
+    gameContainerEl.style.display = 'none';
   }
 
   // --- Event Listeners ---
-  micPermissionButton.addEventListener('click', requestMicPermission);
+  micPermissionButton.addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      setMicGranted();
+      showDifficultySelector();
+    } catch (err) {
+      micStatusEl.innerHTML = '<p>❌ マイクの許可が必要です。ブラウザの設定を確認してください。</p>';
+      console.error('Microphone permission denied:', err);
+    }
+  });
 
   difficultyButtons.forEach(button => {
     button.addEventListener('click', () => {
       currentDifficulty = button.dataset.difficulty;
-      difficultySelectorEl.style.display = 'none';
-      gameContainerEl.style.display = 'flex'; // Use flex to match original layout
-
-      // Visually mark the selected button
       difficultyButtons.forEach(btn => btn.classList.remove('selected'));
       button.classList.add('selected');
 
-      // The game starts automatically after mic permission is granted
-      // so we need to make sure mic is ready before proceeding.
-      if (micPermissionButton.style.display === 'none') {
-        startGame();
-      } else {
-         // Prompt user to give mic permission if they haven't yet
-        micStatusEl.innerHTML = '<p>難易度を選んだら、マイクを許可してください！</p>';
-      }
+      difficultySelectorEl.style.display = 'none';
+      gameContainerEl.style.display = 'flex';
+      startGame();
     });
   });
 
@@ -92,9 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   restartButton.addEventListener('click', () => {
     gameOverModal.style.display = 'none';
-    gameContainerEl.style.display = 'none';
-    difficultySelectorEl.style.display = 'block';
-    resetGame();
+    showDifficultySelector();
   });
 
   soundToggleButton.addEventListener('click', () => {
@@ -102,32 +110,10 @@ document.addEventListener('DOMContentLoaded', () => {
     soundToggleButton.textContent = isMuted ? '🔇' : '🔊';
   });
 
-  // --- Functions ---
-
-  async function requestMicPermission() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Stop the tracks immediately since we only need the permission, not the stream itself.
-      // The SpeechRecognition API handles the stream internally.
-      stream.getTracks().forEach(track => track.stop());
-      micStatusEl.innerHTML = '<p>✅ マイクの準備ができました</p>';
-      micPermissionButton.style.display = 'none';
-    } catch (err) {
-      micStatusEl.innerHTML = '<p>❌ マイクの許可が必要です。ブラウザの設定を確認してください。</p>';
-      console.error('Microphone permission denied:', err);
-    }
-  }
-
-  // --- Speech Recognition Event Handlers ---
-  recognition.onstart = () => {
-    console.log('Voice recognition started.');
-    // You could add a visual indicator here, e.g., a "listening..." status
-  };
-
+  // --- Speech Recognition Handlers ---
   recognition.onresult = (event) => {
     let interimTranscript = '';
     let finalTranscript = '';
-
     for (let i = event.resultIndex; i < event.results.length; ++i) {
       if (event.results[i].isFinal) {
         finalTranscript += event.results[i][0].transcript;
@@ -135,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
         interimTranscript += event.results[i][0].transcript;
       }
     }
-
     interimTextEl.textContent = interimTranscript;
     if (finalTranscript) {
       recognizedTextEl.textContent = finalTranscript;
@@ -143,30 +128,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  recognition.onerror = (event) => {
-    console.error('Speech recognition error', event.error);
-    // Display a user-friendly error message
-    interimTextEl.textContent = `エラー: ${event.error}`;
-  };
-
   recognition.onend = () => {
-    console.log('Voice recognition ended.');
-    // If the game is still active, restart recognition immediately
     if (gameActive) {
       recognition.start();
     }
   };
 
-  // --- Game Logic Functions ---
+  recognition.onerror = (event) => console.error('Speech recognition error', event.error);
 
+
+  // --- Game Logic ---
   function startGame() {
     gameActive = true;
     stopButton.style.display = 'inline-block';
-
-    // Reset scores and UI
     resetGame();
 
-    // Start the countdown timer
     timerInterval = setInterval(() => {
       time--;
       timerEl.textContent = time;
@@ -175,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 1000);
 
-    // Start recognition
     try {
       recognition.start();
     } catch(e) {
@@ -186,74 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
     nextQuestion();
   }
 
-  function nextQuestion() {
-    const questionPool = questions[currentDifficulty] || questions['normal'];
-    currentQuestion = questionPool[Math.floor(Math.random() * questionPool.length)];
-    questionTextEl.textContent = currentQuestion;
-    recognizedTextEl.textContent = '...';
-    interimTextEl.textContent = '';
-  }
-
-  function normalizeText(text) {
-    // Remove punctuation and convert to hiragana
-    const hiragana = text.replace(/[\u30a1-\u30f6]/g, (match) => {
-      const chr = match.charCodeAt(0) - 0x60;
-      return String.fromCharCode(chr);
-    });
-    return hiragana.replace(/[、。！？\s,.?!]/g, '');
-  }
-
-  function checkAnswer(answer) {
-    if (!gameActive) return;
-
-    const normalizedAnswer = normalizeText(answer);
-    const normalizedQuestion = normalizeText(currentQuestion);
-
-    if (normalizedAnswer === normalizedQuestion) {
-      // Correct
-      score += 100 + (combo * 10);
-      combo++;
-      correctCount++;
-      if (combo > maxCombo) {
-        maxCombo = combo;
-      }
-      resultDisplayEl.textContent = '正解！';
-      resultDisplayEl.className = 'result-display correct';
-      playSound('correct');
-    } else {
-      // Incorrect
-      combo = 0;
-      missCount++;
-      resultDisplayEl.textContent = '残念！';
-      resultDisplayEl.className = 'result-display incorrect';
-      playSound('incorrect');
-    }
-
-    // Update UI
-    scoreEl.textContent = score;
-    comboEl.textContent = combo;
-
-    // Clear the result message after a short delay
-    setTimeout(() => {
-      resultDisplayEl.textContent = '';
-      resultDisplayEl.className = 'result-display';
-    }, 1000);
-
-    // Move to the next question
-    setTimeout(nextQuestion, 200);
-  }
-
   function stopGame() {
     gameActive = false;
-    if (timerInterval) {
-      clearInterval(timerInterval);
-    }
+    stopButton.style.display = 'none';
+    if (timerInterval) clearInterval(timerInterval);
     recognition.stop();
 
-    stopButton.style.display = 'none';
-
-    // In a future step, this will show the game over modal
-    console.log('Game Stopped. Final score:', score);
     gameOverModal.style.display = 'flex';
     finalScoreEl.textContent = score;
     maxComboEl.textContent = maxCombo;
@@ -272,12 +185,53 @@ document.addEventListener('DOMContentLoaded', () => {
     scoreEl.textContent = score;
     timerEl.textContent = time;
     comboEl.textContent = combo;
-    questionTextEl.textContent = 'ここに課題文が表示されます';
-    recognizedTextEl.textContent = 'ここに認識されたテキストが表示されます...';
+    recognizedTextEl.textContent = '...';
     interimTextEl.textContent = '';
   }
 
-  // Initial UI state is now handled by showing/hiding the difficulty selector
-  // and game container. The mic permission button is the initial gate.
+  function nextQuestion() {
+    const questionPool = questions[currentDifficulty] || questions['normal'];
+    currentQuestion = questionPool[Math.floor(Math.random() * questionPool.length)];
+    questionTextEl.textContent = currentQuestion;
+  }
 
+  function normalizeText(text) {
+    const hiragana = text.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60));
+    return hiragana.replace(/[、。！？\s,.?!]/g, '');
+  }
+
+  function checkAnswer(answer) {
+    if (!gameActive) return;
+    const normalizedAnswer = normalizeText(answer);
+    const normalizedQuestion = normalizeText(currentQuestion);
+
+    if (normalizedAnswer === normalizedQuestion) {
+      score += 100 + (combo * 10);
+      combo++;
+      correctCount++;
+      if (combo > maxCombo) maxCombo = combo;
+      resultDisplayEl.textContent = '正解！';
+      resultDisplayEl.className = 'result-display correct';
+      playSound('correct');
+    } else {
+      combo = 0;
+      missCount++;
+      resultDisplayEl.textContent = '残念！';
+      resultDisplayEl.className = 'result-display incorrect';
+      playSound('incorrect');
+    }
+
+    scoreEl.textContent = score;
+    comboEl.textContent = combo;
+
+    setTimeout(() => {
+      resultDisplayEl.textContent = '';
+      resultDisplayEl.className = 'result-display';
+    }, 1000);
+
+    setTimeout(nextQuestion, 200);
+  }
+
+  // --- Start the app ---
+  initialize();
 });
