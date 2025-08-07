@@ -234,10 +234,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function normalizeText(text) {
-    // Use wanakana to convert Katakana and Kanji to Hiragana
-    const hiragana = wanakana.toHiragana(text);
+    let normalized = text;
+    // Check if wanakana is available before using it
+    if (typeof wanakana !== 'undefined' && wanakana.toHiragana) {
+      normalized = wanakana.toHiragana(text);
+    } else {
+      // Fallback if wanakana fails to load: just do Katakana -> Hiragana
+      if (typeof wanakana === 'undefined') {
+        console.warn("Wanakana library not loaded. Falling back to basic normalization.");
+      }
+      normalized = text.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60));
+    }
     // Remove punctuation and spaces
-    return hiragana.replace(/[、。！？\s,.?!]/g, '');
+    return normalized.replace(/[、。！？\s,.?!]/g, '');
   }
 
   function checkAnswer(answer) {
