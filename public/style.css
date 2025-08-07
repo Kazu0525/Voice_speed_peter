@@ -42,6 +42,29 @@ body {
   color: var(--text-light);
   padding: 20px 30px;
   text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-content {
+  text-align: left;
+}
+
+.btn-sound {
+  background: none;
+  border: 2px solid var(--text-light);
+  color: var(--text-light);
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-sound:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .header h1 {
@@ -271,4 +294,23 @@ body {
   .question-text {
     font-size: 1.5rem;
   }
+}
+
+.difficulty-selector {
+  text-align: center;
+  padding: 30px;
+  background: #f8fafc;
+  border-radius: 15px;
+  margin-bottom: 20px;
+}
+
+.difficulty-selector h2 {
+  margin-bottom: 20px;
+  color: var(--text-dark);
+}
+
+.difficulty-btn.selected {
+  background: var(--primary-color);
+  color: var(--text-light);
+  border-color: var(--primary-color);
 }

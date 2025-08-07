@@ -20,12 +20,26 @@
 <body>
 <div class="container">
 <div class="header">
-<h1>🎤 音声入力ゲーム 🍣</h1>
-<p>表示されるお題を素早く正確に読み上げよう！</p>
+  <div class="header-content">
+    <h1>🎤 音声入力ゲーム 🍣</h1>
+    <p>表示されるお題を素早く正確に読み上げよう！</p>
+  </div>
+  <div class="sound-control">
+    <button id="sound-toggle" class="btn-sound">🔊</button>
+  </div>
 </div>
 
 <div class="main-content">
-<div class="game-container">
+<div id="difficulty-selector" class="difficulty-selector">
+  <h2>難易度を選択してください</h2>
+  <div class="controls">
+    <button class="btn btn-secondary difficulty-btn" data-difficulty="easy">簡単</button>
+    <button class="btn btn-secondary difficulty-btn" data-difficulty="normal">普通</button>
+    <button class="btn btn-secondary difficulty-btn" data-difficulty="hard">難しい</button>
+  </div>
+</div>
+
+<div class="game-container" style="display: none;">
   <div class="game-info">
     <div class="info-item">
       <span class="info-label">スコア</span>
@@ -53,7 +67,6 @@
   </div>
 
   <div class="controls">
-    <button class="btn btn-primary" id="start-button">ゲーム開始</button>
     <button class="btn btn-danger" id="stop-button" style="display: none;">ゲーム終了</button>
   </div>
 

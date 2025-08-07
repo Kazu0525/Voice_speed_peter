@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const resultDisplayEl = document.getElementById('result-display');
   const recognizedTextEl = document.getElementById('recognized-text');
   const interimTextEl = document.getElementById('interim-text');
-  const startButton = document.getElementById('start-button');
   const stopButton = document.getElementById('stop-button');
   const micStatusEl = document.getElementById('mic-status');
   const micPermissionButton = document.getElementById('mic-permission-button');
@@ -17,6 +16,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const correctCountEl = document.getElementById('correct-count');
   const missCountEl = document.getElementById('miss-count');
   const restartButton = document.getElementById('restart-button');
+  const soundToggleButton = document.getElementById('sound-toggle');
+  const difficultySelectorEl = document.getElementById('difficulty-selector');
+  const gameContainerEl = document.querySelector('.game-container');
+  const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+
+  // --- Audio ---
+  let isMuted = false;
+  const sounds = {
+    start: new Audio('https://soundeffect-lab.info/sound/button/mp3/decision18.mp3'),
+    correct: new Audio('https://soundeffect-lab.info/sound/button/mp3/decision22.mp3'),
+    incorrect: new Audio('https://soundeffect-lab.info/sound/button/mp3/beep4.mp3')
+  };
+
+  function playSound(sound) {
+    if (!isMuted) {
+      sounds[sound].currentTime = 0;
+      sounds[sound].play();
+    }
+  }
 
   // Game State
   let score = 0;
@@ -28,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let timerInterval = null;
   let gameActive = false;
   let currentQuestion = '';
+  let currentDifficulty = 'normal'; // Default difficulty
 
   // Speech Recognition Setup
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -41,23 +60,50 @@ document.addEventListener('DOMContentLoaded', () => {
     recognition.continuous = false; // Process one phrase at a time
   } else {
     micStatusEl.innerHTML = '<p>お使いのブラウザは音声認識に対応していません。</p>';
-    startButton.disabled = true;
+    // Can't disable a button that doesn't exist, the UI will just not proceed.
     return;
   }
 
   // --- Event Listeners ---
   micPermissionButton.addEventListener('click', requestMicPermission);
-  startButton.addEventListener('click', startGame);
+
+  difficultyButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      currentDifficulty = button.dataset.difficulty;
+      difficultySelectorEl.style.display = 'none';
+      gameContainerEl.style.display = 'flex'; // Use flex to match original layout
+
+      // Visually mark the selected button
+      difficultyButtons.forEach(btn => btn.classList.remove('selected'));
+      button.classList.add('selected');
+
+      // The game starts automatically after mic permission is granted
+      // so we need to make sure mic is ready before proceeding.
+      if (micPermissionButton.style.display === 'none') {
+        startGame();
+      } else {
+         // Prompt user to give mic permission if they haven't yet
+        micStatusEl.innerHTML = '<p>難易度を選んだら、マイクを許可してください！</p>';
+      }
+    });
+  });
+
   stopButton.addEventListener('click', stopGame);
+
   restartButton.addEventListener('click', () => {
     gameOverModal.style.display = 'none';
+    gameContainerEl.style.display = 'none';
+    difficultySelectorEl.style.display = 'block';
     resetGame();
-    startGame();
+  });
+
+  soundToggleButton.addEventListener('click', () => {
+    isMuted = !isMuted;
+    soundToggleButton.textContent = isMuted ? '🔇' : '🔊';
   });
 
   // --- Functions ---
 
-  // Placeholder for microphone permission
   async function requestMicPermission() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -66,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
       stream.getTracks().forEach(track => track.stop());
       micStatusEl.innerHTML = '<p>✅ マイクの準備ができました</p>';
       micPermissionButton.style.display = 'none';
-      startButton.disabled = false;
     } catch (err) {
       micStatusEl.innerHTML = '<p>❌ マイクの許可が必要です。ブラウザの設定を確認してください。</p>';
       console.error('Microphone permission denied:', err);
@@ -116,7 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function startGame() {
     gameActive = true;
-    startButton.style.display = 'none';
     stopButton.style.display = 'inline-block';
 
     // Reset scores and UI
@@ -138,11 +182,13 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error("Recognition could not be started: ", e);
     }
 
+    playSound('start');
     nextQuestion();
   }
 
   function nextQuestion() {
-    currentQuestion = questions[Math.floor(Math.random() * questions.length)];
+    const questionPool = questions[currentDifficulty] || questions['normal'];
+    currentQuestion = questionPool[Math.floor(Math.random() * questionPool.length)];
     questionTextEl.textContent = currentQuestion;
     recognizedTextEl.textContent = '...';
     interimTextEl.textContent = '';
@@ -173,12 +219,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       resultDisplayEl.textContent = '正解！';
       resultDisplayEl.className = 'result-display correct';
+      playSound('correct');
     } else {
       // Incorrect
       combo = 0;
       missCount++;
       resultDisplayEl.textContent = '残念！';
       resultDisplayEl.className = 'result-display incorrect';
+      playSound('incorrect');
     }
 
     // Update UI
@@ -202,7 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     recognition.stop();
 
-    startButton.style.display = 'inline-block';
     stopButton.style.display = 'none';
 
     // In a future step, this will show the game over modal
@@ -230,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
     interimTextEl.textContent = '';
   }
 
-  // Initial UI state
-  startButton.disabled = true;
+  // Initial UI state is now handled by showing/hiding the difficulty selector
+  // and game container. The mic permission button is the initial gate.
 
 });
