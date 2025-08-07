@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const resultDisplayEl = document.getElementById('result-display');
   const recognizedTextEl = document.getElementById('recognized-text');
   const interimTextEl = document.getElementById('interim-text');
+  const startButton = document.getElementById('start-button');
   const stopButton = document.getElementById('stop-button');
   const micStatusEl = document.getElementById('mic-status');
   const micPermissionButton = document.getElementById('mic-permission-button');
@@ -20,17 +21,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const difficultySelectorEl = document.getElementById('difficulty-selector');
   const gameContainerEl = document.querySelector('.game-container');
   const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+  const bgmEl = document.getElementById('bgm');
 
   // --- Audio ---
   let isMuted = false;
+  let audioUnlocked = false;
   const sounds = {
     start: new Audio('https://soundeffect-lab.info/sound/button/mp3/decision18.mp3'),
     correct: new Audio('https://soundeffect-lab.info/sound/button/mp3/decision22.mp3'),
     incorrect: new Audio('https://soundeffect-lab.info/sound/button/mp3/beep4.mp3')
   };
 
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    const allSounds = [bgmEl, ...Object.values(sounds)];
+    allSounds.forEach(sound => {
+      sound.play().catch(() => {});
+      sound.pause();
+      sound.currentTime = 0;
+    });
+    audioUnlocked = true;
+    console.log("Audio context unlocked.");
+  }
+
   function playSound(sound) {
-    if (!isMuted) {
+    if (!isMuted && audioUnlocked) {
       sounds[sound].currentTime = 0;
       sounds[sound].play().catch(e => console.error("Error playing sound:", e));
     }
@@ -39,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Game State & Mic Permission ---
   let gameActive = false;
   let currentDifficulty = 'normal';
-  // ... other game state variables
   let score = 0, time = 60, combo = 0, maxCombo = 0, correctCount = 0, missCount = 0, timerInterval = null, currentQuestion = '';
 
   const isMicGranted = () => localStorage.getItem('micGranted') === 'true';
@@ -65,16 +79,19 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       micStatusEl.style.display = 'block';
     }
+    bgmEl.volume = 0.3;
   }
 
   function showDifficultySelector() {
     micStatusEl.style.display = 'none';
     difficultySelectorEl.style.display = 'block';
     gameContainerEl.style.display = 'none';
+    gameOverModal.style.display = 'none';
   }
 
   // --- Event Listeners ---
   micPermissionButton.addEventListener('click', async () => {
+    unlockAudio();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(track => track.stop());
@@ -88,26 +105,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   difficultyButtons.forEach(button => {
     button.addEventListener('click', () => {
+      unlockAudio();
       currentDifficulty = button.dataset.difficulty;
       difficultyButtons.forEach(btn => btn.classList.remove('selected'));
       button.classList.add('selected');
 
       difficultySelectorEl.style.display = 'none';
       gameContainerEl.style.display = 'flex';
-      startGame();
+
+      // Show start button, hide stop button
+      startButton.style.display = 'inline-block';
+      stopButton.style.display = 'none';
+      resetGame(); // Reset the game state and UI elements for the new round
+      nextQuestion(); // Show the first question
     });
   });
 
+  startButton.addEventListener('click', startGame);
   stopButton.addEventListener('click', stopGame);
 
   restartButton.addEventListener('click', () => {
-    gameOverModal.style.display = 'none';
     showDifficultySelector();
   });
 
   soundToggleButton.addEventListener('click', () => {
     isMuted = !isMuted;
     soundToggleButton.textContent = isMuted ? '🔇' : '🔊';
+    bgmEl.muted = isMuted;
   });
 
   // --- Speech Recognition Handlers ---
@@ -140,8 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Game Logic ---
   function startGame() {
     gameActive = true;
+    startButton.style.display = 'none';
     stopButton.style.display = 'inline-block';
-    resetGame();
+
+    if (!isMuted) {
+      bgmEl.currentTime = 0;
+      bgmEl.play().catch(e => console.error("BGM play failed:", e));
+    }
 
     timerInterval = setInterval(() => {
       time--;
@@ -158,14 +187,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     playSound('start');
-    nextQuestion();
   }
 
   function stopGame() {
     gameActive = false;
     stopButton.style.display = 'none';
+    startButton.style.display = 'inline-block';
     if (timerInterval) clearInterval(timerInterval);
     recognition.stop();
+    bgmEl.pause();
 
     gameOverModal.style.display = 'flex';
     finalScoreEl.textContent = score;
@@ -191,7 +221,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function nextQuestion() {
     const questionPool = questions[currentDifficulty] || questions['normal'];
-    currentQuestion = questionPool[Math.floor(Math.random() * questionPool.length)];
+    if (questionPool.length === 1) {
+        currentQuestion = questionPool[0];
+    } else {
+        let newQuestion;
+        do {
+            newQuestion = questionPool[Math.floor(Math.random() * questionPool.length)];
+        } while (newQuestion === currentQuestion);
+        currentQuestion = newQuestion;
+    }
     questionTextEl.textContent = currentQuestion;
   }
 
