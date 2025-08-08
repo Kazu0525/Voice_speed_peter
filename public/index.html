@@ -788,6 +788,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // 音声認識のイベントハンドラー
   recognition.onresult = (event) => {
+    if (!gameActive) return; // ゲーム非アクティブ時は処理しない
+    
     let interimTranscript = '';
     let finalTranscript = '';
     
@@ -799,8 +801,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     
+    // 暫定結果を表示
     interimTextEl.textContent = interimTranscript;
-    if (finalTranscript) {
+    
+    // 確定結果がある場合のみ処理
+    if (finalTranscript.trim()) {
       recognizedTextEl.textContent = finalTranscript;
       checkAnswer(finalTranscript);
     }
@@ -808,7 +813,26 @@ document.addEventListener('DOMContentLoaded', () => {
   
   recognition.onend = () => {
     if (gameActive) {
-      setTimeout(() => recognition.start(), 100);
+      // 音声認識が予期せず終了した場合の再開処理
+      setTimeout(() => {
+        try {
+          if (gameActive) {
+            recognition.start();
+          }
+        } catch(e) {
+          console.error("Recognition restart failed in onend:", e);
+          // 再試行
+          setTimeout(() => {
+            if (gameActive) {
+              try {
+                recognition.start();
+              } catch(e2) {
+                console.error("Recognition restart retry failed:", e2);
+              }
+            }
+          }, 500);
+        }
+      }, 100);
     }
   };
   
@@ -916,21 +940,42 @@ document.addEventListener('DOMContentLoaded', () => {
       let newQuestion;
       do {
         newQuestion = questionPool[Math.floor(Math.random() * questionPool.length)];
-      } while (newQuestion === currentQuestion);
+      } while (newQuestion === currentQuestion && questionPool.length > 1);
       currentQuestion = newQuestion;
     }
     
     questionTextEl.textContent = currentQuestion;
+    
+    // 問題が変わったタイミングで音声認識結果をリセット
+    recognizedTextEl.textContent = '...';
+    interimTextEl.textContent = '';
+    
+    console.log('新しい問題:', currentQuestion);
   }
   
   function normalizeText(text) {
     let normalized = text;
     
+    // wanaKanaライブラリが使える場合のみ使用
     if (typeof wanakana !== 'undefined') {
-      normalized = wanakana.toHiragana(text);
+      try {
+        normalized = wanakana.toHiragana(text);
+      } catch(e) {
+        console.warn('wanakana conversion failed:', e);
+        // フォールバック：カタカナをひらがなに変換
+        normalized = text.replace(/[\u30A1-\u30F6]/g, function(match) {
+          return String.fromCharCode(match.charCodeAt(0) - 0x60);
+        });
+      }
+    } else {
+      // wanaKanaが使えない場合のフォールバック
+      normalized = text.replace(/[\u30A1-\u30F6]/g, function(match) {
+        return String.fromCharCode(match.charCodeAt(0) - 0x60);
+      });
     }
     
-    return normalized.replace(/[、。！？\\s,.?!]/g, '');
+    // 句読点、スペース、記号を削除
+    return normalized.replace(/[、。！？\s,.?!]/g, '').toLowerCase();
   }
   
   function checkAnswer(answer) {
@@ -938,6 +983,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const normalizedAnswer = normalizeText(answer);
     const normalizedQuestion = normalizeText(currentQuestion);
+    
+    console.log('問題:', currentQuestion, '→', normalizedQuestion);
+    console.log('回答:', answer, '→', normalizedAnswer);
+    console.log('一致:', normalizedAnswer === normalizedQuestion);
     
     if (normalizedAnswer === normalizedQuestion) {
       score += 100 + (combo * 10);
@@ -956,6 +1005,13 @@ document.addEventListener('DOMContentLoaded', () => {
       resultDisplayEl.textContent = combo >= 5 ? `正解！ ${combo}コンボ！` : '正解！';
       resultDisplayEl.className = 'result-display correct';
       playSound('correct');
+      
+      // 正解時は音声認識結果をクリア
+      setTimeout(() => {
+        recognizedTextEl.textContent = '...';
+        interimTextEl.textContent = '';
+      }, 800);
+      
     } else {
       combo = 0;
       missCount++;
@@ -964,6 +1020,12 @@ document.addEventListener('DOMContentLoaded', () => {
       resultDisplayEl.textContent = '残念！';
       resultDisplayEl.className = 'result-display incorrect';
       playSound('incorrect');
+      
+      // 不正解時も音声認識結果をクリア
+      setTimeout(() => {
+        recognizedTextEl.textContent = '...';
+        interimTextEl.textContent = '';
+      }, 1500);
     }
     
     scoreEl.textContent = score;
@@ -974,7 +1036,18 @@ document.addEventListener('DOMContentLoaded', () => {
       resultDisplayEl.className = 'result-display';
     }, 1000);
     
-    setTimeout(nextQuestion, 200);
+    // 次の問題への切り替え前に音声認識を一時停止
+    recognition.stop();
+    setTimeout(() => {
+      nextQuestion();
+      if (gameActive) {
+        try {
+          recognition.start();
+        } catch(e) {
+          console.error("Recognition restart failed:", e);
+        }
+      }
+    }, 1200);
   }
   
   initialize();
