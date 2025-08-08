@@ -181,3 +181,81 @@
     }
   };
 })();
+
+document.addEventListener("DOMContentLoaded", () => {
+  const micStatus = document.getElementById("mic-status");
+  const diff = document.getElementById("difficulty-selector");
+  const game = document.querySelector(".game-container");
+  const startBtn = document.getElementById("start-button");
+  const stopBtn  = document.getElementById("stop-button");
+  const scoreEl  = document.getElementById("score");
+  const timerEl  = document.getElementById("timer");
+  const comboEl  = document.getElementById("combo");
+  const questionTextEl   = document.getElementById("question-text");
+  const recognizedTextEl = document.getElementById("recognized-text");
+  const interimTextEl    = document.getElementById("interim-text");
+  const orderNumEl       = document.getElementById("order-number");
+  const bgmEl = document.getElementById("bgm");
+
+  let currentDifficulty = "normal";
+  let currentQuestion = "";
+  let orderNo = 1, score = 0, combo = 0, timeLeft = 60, timer = null;
+
+  // 質問プール（questions.js があればそれを使う）
+  const orders = (typeof questions !== "undefined") ? questions : {
+    easy:["しょうゆ","しお","みそ","のり","ねぎ","メンマ","バター"],
+    normal:["味玉しょうゆ","チャーシューみそ","ねぎしお","メンマしょうゆ","のりバター","こってりみそ","あっさりしょうゆ"],
+    hard:["特製味玉しょうゆ","チャーシューダブルみそ","全部のせしお","焦がしにんにくしょうゆ","背脂こってりみそ","バターコーンみそ"]
+  };
+
+  function updateHUD(){ scoreEl.textContent=score; comboEl.textContent=combo; timerEl.textContent=timeLeft; }
+  function nextQuestion(){
+    const pool = orders[currentDifficulty] || orders.normal;
+    currentQuestion = pool[Math.floor(Math.random()*pool.length)];
+    questionTextEl.textContent = currentQuestion;
+    orderNumEl.textContent = String(orderNo++);
+    recognizedTextEl.textContent = "";
+    interimTextEl.textContent = "";
+  }
+
+  function startGame(){
+    micStatus.style.display = "none";
+    diff.style.display = "none";
+    game.style.display = "flex";
+    score=0; combo=0; timeLeft=60; orderNo=1; updateHUD();
+    nextQuestion();
+    try { bgmEl.currentTime=0; bgmEl.play().catch(()=>{}); } catch(e){}
+    startBtn.style.display = "none";
+    stopBtn.style.display  = "inline-block";
+    clearInterval(timer);
+    timer = setInterval(()=>{
+      timeLeft--; updateHUD();
+      if(timeLeft<=0){
+        clearInterval(timer);
+        try{bgmEl.pause();}catch(e){}
+        startBtn.style.display="inline-block";
+        stopBtn.style.display="none";
+      }
+    },1000);
+  }
+
+  // ✅ 難易度ボタンにイベントを紐づけ
+  document.querySelectorAll(".difficulty-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".difficulty-btn").forEach(b=>b.classList.remove("selected"));
+      btn.classList.add("selected");
+      currentDifficulty = btn.dataset.difficulty || "normal";
+      startGame();                   // ← クリックで即開始
+    });
+  });
+
+  // 任意で開始/停止ボタンも動かす
+  startBtn?.addEventListener("click", startGame);
+  stopBtn?.addEventListener("click", ()=>{
+    clearInterval(timer);
+    try{bgmEl.pause();}catch(e){}
+    startBtn.style.display="inline-block";
+    stopBtn.style.display="none";
+  });
+});
+
