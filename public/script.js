@@ -259,3 +259,85 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+  const micStatus = document.getElementById("mic-status");
+  const diff = document.getElementById("difficulty-selector");
+  const game = document.querySelector(".game-container");
+  const startBtn = document.getElementById("start-button");
+  const stopBtn  = document.getElementById("stop-button");
+  const bgmEl    = document.getElementById("bgm");
+  const micBtn   = document.getElementById("mic-permission-button");
+
+  // ▼ 追加: 戻るボタン（HTMLに無ければここで作る）
+  let backBtn = document.getElementById("back-button");
+  if (!backBtn) {
+    backBtn = document.createElement("button");
+    backBtn.id = "back-button";
+    backBtn.className = "btn btn-secondary";
+    backBtn.textContent = "トップに戻る";
+    backBtn.style.display = "none";
+    document.querySelector(".controls")?.appendChild(backBtn);
+  }
+
+  // ==== 1) マイク許可の保持（localStorage）====
+  const MIC_KEY = "micGranted";
+  const micGranted = localStorage.getItem(MIC_KEY) === "1";
+
+  // 起動時：許可済みならマイク案内をスキップ
+  if (micGranted) {
+    micStatus.style.display = "none";
+    diff.style.display = "block";
+  }
+
+  // 「マイクを許可」押下時：実際に取得を試み、成功したら保存
+  micBtn?.addEventListener("click", async () => {
+    try {
+      // 実許可を取りに行く（https環境推奨）
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStorage.setItem(MIC_KEY, "1");
+    } catch (e) {
+      console.warn("Mic permission error:", e);
+      // 失敗してもUIは進める（デバッグ用）
+    }
+    micStatus.style.display = "none";
+    diff.style.display = "block";
+  });
+
+  // ==== 2) トップに戻るボタン ====
+  backBtn.addEventListener("click", () => {
+    // タイマー停止（startGame側で使っているtimerがグローバルならそれを参照）
+    try { clearInterval(window.timer); } catch {}
+    // BGM停止
+    try { bgmEl.pause(); bgmEl.currentTime = 0; } catch {}
+    // 画面遷移
+    game.style.display = "none";
+    diff.style.display = "block";
+    // ボタン状態
+    startBtn.style.display = "inline-block";
+    stopBtn.style.display = "none";
+    backBtn.style.display = "none";
+    // 難易度の選び直しを可能に（選択ハイライトを残したくなければ下2行を有効化）
+    // document.querySelectorAll(".difficulty-btn").forEach(b=>b.classList.remove("selected"));
+    // window.currentDifficulty = "normal";
+  });
+
+  // ==== startGame フック：開始したら戻るボタンを出す ====
+  const _origStart = window.__ramenMin?.startGame || window.startGame; // AパッチのstartGameにフック
+  function exposeBackBtnOnce() {
+    backBtn.style.display = "inline-block";
+  }
+  // Aの実装が `startBtn.addEventListener("click", startGame)` の形なら下記でOK
+  // startGame 内で exposeBackBtnOnce() を呼ぶのが確実だけど、関数に触れない場合は
+  // 開始時イベントでもOK（Aコードがあれば二重にはならない）
+  document.getElementById("start-button")?.addEventListener("click", () => {
+    setTimeout(exposeBackBtnOnce, 0);
+  });
+  document.querySelectorAll(".difficulty-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      setTimeout(exposeBackBtnOnce, 0);
+    });
+  });
+
+  // 参考：AのstopBtn処理があるなら、そこでも戻るボタンは残してOK
+  // （「トップに戻る」で完全に抜ける想定のため）
+});
