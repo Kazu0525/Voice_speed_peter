@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // BGM音声要素
   const bgmEl = document.getElementById('bgm');
+  const tenseBgmEl = document.getElementById('tense-bgm');
   
   // ===========================================
   // 2. 音声関連の設定
@@ -133,10 +134,16 @@ document.addEventListener('DOMContentLoaded', () => {
       micStatusEl.style.display = 'block'; // マイク許可画面を表示
     }
     bgmEl.volume = 0.3; // BGMの音量を30%に設定
+    bgmEl.pause();
+    bgmEl.currentTime = 0;
+    if (tenseBgmEl) { tenseBgmEl.pause(); tenseBgmEl.currentTime = 0; }
   }
   
   // 難易度選択画面を表示する関数
   function showDifficultySelector() {
+    // ゲーム外ではBGMを止める
+    try { bgmEl.pause(); bgmEl.currentTime = 0; } catch(e) {}
+    if (tenseBgmEl) { try { tenseBgmEl.pause(); tenseBgmEl.currentTime = 0; } catch(e) {} }
     micStatusEl.style.display = 'none';           // マイク許可画面を非表示
     difficultySelectorEl.style.display = 'block'; // 難易度選択画面を表示
     gameContainerEl.style.display = 'none';       // ゲーム画面を非表示
@@ -259,10 +266,15 @@ document.addEventListener('DOMContentLoaded', () => {
     stopButton.style.display = 'inline-block';  // 停止ボタンを表示
     
     // BGM再生
-    if (!isMuted) {
-      bgmEl.currentTime = 0; // BGMを最初から再生
-      bgmEl.play().catch(e => console.error("BGM play failed:", e));
-    }
+    try {
+      bgmEl.loop = true;
+      bgmEl.muted = isMuted;
+      bgmEl.currentTime = 0;
+      awaitPlay = bgmEl.play();
+      if (awaitPlay && typeof awaitPlay.then === 'function') {
+        awaitPlay.catch(e => console.warn('BGM play blocked:', e));
+      }
+    } catch(e) { console.error('BGM play failed:', e); }
     
     // 1秒ごとにタイマーを減らす
     timerInterval = setInterval(() => {
@@ -295,6 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (timerInterval) clearInterval(timerInterval);
     recognition.stop(); // 音声認識を停止
     bgmEl.pause();      // BGMを停止
+    bgmEl.currentTime = 0;
     
     // ゲーム終了モーダルを表示
     gameOverModal.style.display = 'flex';
@@ -321,29 +334,29 @@ document.addEventListener('DOMContentLoaded', () => {
     interimTextEl.textContent = '';
   }
   
-// 次の問題を表示する関数
-function nextQuestion() {
-  // 難易度に応じた問題プールを取得
-  const questionPool = questions[currentDifficulty] || questions['normal'];
-
-  if (questionPool.length === 1) {
-    currentQuestion = questionPool[0];
-  } else {
-    let newQuestion;
-    do {
-      newQuestion = questionPool[Math.floor(Math.random() * questionPool.length)];
-    } while (newQuestion === currentQuestion);
-    currentQuestion = newQuestion;
+  // 次の問題を表示する関数
+  function nextQuestion() {
+    // 難易度に応じた問題プールを取得
+    const questionPool = questions[currentDifficulty] || questions['normal'];
+    
+    if (questionPool.length === 1) {
+      // 問題が1つしかない場合
+      currentQuestion = questionPool[0];
+    } else {
+      // 複数の問題がある場合、前の問題と違う問題を選ぶ
+      let newQuestion;
+      do {
+        newQuestion = questionPool[Math.floor(Math.random() * questionPool.length)];
+      } while (newQuestion === currentQuestion);
+      currentQuestion = newQuestion;
+    }
+    
+    // 前回の認識テキストをクリア
+    recognizedTextEl.textContent = '';
+    interimTextEl.textContent = '';
+    
+    questionTextEl.textContent = currentQuestion; // 問題を画面に表示
   }
-
-  // 👇 前の音声認識結果をクリア（スクショの「2」を消す）
-  recognizedTextEl.textContent = '';
-  interimTextEl.textContent = '';
-
-  // 問題を画面に表示
-  questionTextEl.textContent = currentQuestion;
-}
-
   
   // テキストを正規化する関数（ひらがなに統一、句読点を削除）
   function normalizeText(text) {
