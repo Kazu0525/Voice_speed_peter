@@ -1,470 +1,83 @@
-/* ===========================================
-   1. CSS変数の定義（カラーパレットとフォント）
-   ========================================== */
+/* === 既存のテーマに加えてラーメン演出を追加 === */
+:root{
+  --primary-color:#4f46e5;
+  --secondary-color:#7c3aed;
+  --background-start:#667eea;
+  --background-end:#764ba2;
+  --text-light:#fff;
+  --text-dark:#1e293b;
+  --container-bg:#fff;
+  --correct-color:#10b981;
+  --incorrect-color:#ef4444;
+  --font-family:'Segoe UI','Hiragino Kaku Gothic ProN','Meiryo',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:var(--font-family);
+  background:linear-gradient(135deg,var(--background-start),var(--background-end));
+  min-height:100vh;padding:20px;display:flex;justify-content:center;align-items:center;
+}
+.container{width:100%;max-width:860px;margin:0 auto;background:var(--container-bg);
+  border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,.1);overflow:hidden}
+.header{background:linear-gradient(135deg,var(--primary-color),var(--secondary-color));color:var(--text-light);
+  padding:20px 30px;display:flex;justify-content:space-between;align-items:center}
+.header-content{text-align:left}
+.btn-sound{background:none;border:2px solid #fff;color:#fff;width:45px;height:45px;border-radius:50%;font-size:1.5rem;cursor:pointer}
+.header h1{font-size:1.9rem;font-weight:700}
+.main-content{padding:24px}
+.game-container{display:flex;flex-direction:column;gap:18px}
+.game-info{display:flex;justify-content:space-around;background:#f8fafc;padding:12px;border-radius:12px;border:2px solid #e2e8f0}
+.info-item{text-align:center}
+.info-label{display:block;font-size:.9rem;color:#64748b;margin-bottom:4px}
+.info-value{font-size:1.8rem;font-weight:700;color:var(--primary-color)}
 
-/* :root は全てのHTML要素で使える変数を定義する場所 */
-:root {
-  /* メインカラー */
-  --primary-color: #4f46e5;      /* 紫色（ボタンやアクセント） */
-  --secondary-color: #7c3aed;    /* より濃い紫色（グラデーション用） */
-  
-  /* 背景色 */
-  --background-start: #667eea;   /* 背景グラデーションの開始色 */
-  --background-end: #764ba2;     /* 背景グラデーションの終了色 */
-  
-  /* テキストカラー */
-  --text-light: #ffffff;         /* 白色のテキスト */
-  --text-dark: #1e293b;          /* 濃い灰色のテキスト */
-  
-  /* 背景色 */
-  --container-bg: #ffffff;       /* コンテナの背景色（白） */
-  
-  /* 状態を表すカラー */
-  --correct-color: #10b981;      /* 正解時の緑色 */
-  --incorrect-color: #ef4444;    /* 不正解時の赤色 */
-  
-  /* フォントファミリー（日本語対応） */
-  --font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+/* ラーメン屋シーン */
+.ramen-scene{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);
+  border:2px solid #7dd3fc;border-radius:16px;padding:18px;min-height:140px;position:relative;overflow:hidden}
+.customer{display:flex;align-items:flex-end;gap:12px}
+.customer-emoji{font-size:3rem}
+.speech-bubble{
+  background:#fff;border:2px solid #94a3b8;border-radius:16px;padding:12px 14px;max-width:440px;position:relative
+}
+.speech-bubble:after{
+  content:"";position:absolute;left:-10px;bottom:8px;border-width:10px;border-style:solid;
+  border-color:transparent #94a3b8 transparent transparent
+}
+.speech-bubble:before{
+  content:"";position:absolute;left:-8px;bottom:8px;border-width:10px;border-style:solid;
+  border-color:transparent #fff transparent transparent
+}
+.counter{margin-left:auto;display:flex;align-items:center;gap:16px}
+.ticket{background:#fff2;backdrop-filter:blur(2px);border:2px dashed #94a3b8;border-radius:8px;padding:6px 10px;color:#475569}
+.bowl{font-size:3rem;transition:transform .6s ease, opacity .4s ease}
+.bowl.serve{animation:serve-move .8s ease forwards}
+@keyframes serve-move{
+  0%{transform:translate(0,0) scale(1)}
+  100%{transform:translate(-220px,-40px) scale(1.1)}
 }
 
-/* ===========================================
-   2. 全体のリセットとベースの設定
-   ========================================== */
+.result-display{text-align:center;font-size:2.2rem;font-weight:700;height:48px}
+.result-display.correct{color:var(--correct-color);animation:bounce .5s ease}
+.result-display.incorrect{color:var(--incorrect-color);animation:shake .5s ease}
+@keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
 
-/* * は全ての要素を指す。ブラウザのデフォルトスタイルをリセット */
-* {
-  margin: 0;          /* 外側の余白をゼロに */
-  padding: 0;         /* 内側の余白をゼロに */
-  box-sizing: border-box;  /* パディングとボーダーを幅に含める */
-}
+.recognized-text-area{background:#f8fafc;border-radius:10px;padding:14px;min-height:74px;text-align:center;color:#475569}
+#recognized-text{font-size:1.15rem}
+#interim-text{font-size:1rem;color:#94a3b8}
 
-/* body は全体の背景とレイアウトを設定 */
-body {
-  font-family: var(--font-family);  /* フォントを変数から取得 */
-  /* グラデーション背景（左上から右下へ） */
-  background: linear-gradient(135deg, var(--background-start) 0%, var(--background-end) 100%);
-  min-height: 100vh;   /* 最小高さを画面全体に */
-  padding: 20px;       /* 全体に20pxの余白 */
-  display: flex;       /* フレックスボックスレイアウト */
-  justify-content: center;  /* 水平方向の中央揃え */
-  align-items: center;      /* 垂直方向の中央揃え */
-}
+.controls{display:flex;justify-content:center;gap:12px}
+.btn{padding:12px 22px;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;transition:all .25s ease}
+.btn-primary{background:linear-gradient(135deg,var(--primary-color),var(--secondary-color));color:#fff}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(79,70,229,.3)}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-danger:hover{background:#dc2626}
 
-/* ===========================================
-   3. メインコンテナのスタイル
-   ========================================== */
+.mic-status{text-align:center;background:#fffbeb;padding:12px;border-radius:10px;border:1px solid #fef3c7;color:#b45309}
+.difficulty-selector{text-align:center;padding:20px;background:#f8fafc;border-radius:15px;margin-bottom:16px}
+.difficulty-btn.selected{background:var(--primary-color);color:#fff;border-color:var(--primary-color)}
 
-/* メインのコンテナ（ゲーム全体を囲む白い箱） */
-.container {
-  width: 100%;                    /* 幅を100%に */
-  max-width: 800px;              /* 最大幅を800pxに制限 */
-  margin: 0 auto;                /* 中央揃え */
-  background: var(--container-bg); /* 背景色を白に */
-  border-radius: 20px;           /* 角を丸くする */
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);  /* 影を付ける */
-  overflow: hidden;              /* はみ出した部分を隠す */
-}
-
-/* ===========================================
-   4. ヘッダー（タイトル部分）のスタイル
-   ========================================== */
-
-/* ヘッダーセクション */
-.header {
-  /* グラデーション背景（紫色） */
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-  color: var(--text-light);      /* 白色のテキスト */
-  padding: 20px 30px;            /* 内側の余白 */
-  text-align: center;            /* テキストを中央揃え */
-  display: flex;                 /* フレックスボックス */
-  justify-content: space-between; /* 両端揃え */
-  align-items: center;           /* 垂直方向の中央揃え */
-}
-
-/* ヘッダーのコンテンツ部分 */
-.header-content {
-  text-align: left;              /* テキストを左揃え */
-}
-
-/* 音声ON/OFFボタン */
-.btn-sound {
-  background: none;              /* 背景なし */
-  border: 2px solid var(--text-light);  /* 白い境界線 */
-  color: var(--text-light);      /* 白いテキスト */
-  width: 45px;                   /* 幅45px */
-  height: 45px;                  /* 高さ45px */
-  border-radius: 50%;            /* 完全に丸いボタン */
-  font-size: 1.5rem;             /* フォントサイズ */
-  cursor: pointer;               /* マウスカーソルをポインターに */
-  transition: all 0.3s ease;     /* 0.3秒でなめらかに変化 */
-}
-
-/* 音声ボタンにマウスを乗せた時 */
-.btn-sound:hover {
-  background: rgba(255, 255, 255, 0.2);  /* 半透明の白い背景 */
-}
-
-/* ヘッダーのタイトル */
-.header h1 {
-  font-size: 2rem;              /* フォントサイズ */
-  font-weight: 700;             /* 太字 */
-}
-
-/* ヘッダーの説明文 */
-.header p {
-  font-size: 1rem;              /* 通常のフォントサイズ */
-  opacity: 0.9;                 /* 少し透明に */
-}
-
-/* ===========================================
-   5. メインコンテンツエリア
-   ========================================== */
-
-/* メインコンテンツの余白設定 */
-.main-content {
-  padding: 30px;                /* 内側に30pxの余白 */
-}
-
-/* ゲームコンテナ（ゲーム画面全体） */
-.game-container {
-  display: flex;                /* フレックスボックス */
-  flex-direction: column;       /* 縦方向に配置 */
-  gap: 20px;                   /* 要素間に20pxの間隔 */
-}
-
-/* ===========================================
-   6. ゲーム情報表示エリア（スコア・タイマーなど）
-   ========================================== */
-
-/* ゲーム情報の表示エリア */
-.game-info {
-  display: flex;               /* フレックスボックス */
-  justify-content: space-around; /* 等間隔で配置 */
-  background: #f8fafc;         /* 薄いグレーの背景 */
-  padding: 15px;               /* 内側の余白 */
-  border-radius: 15px;         /* 角を丸く */
-  border: 2px solid #e2e8f0;   /* グレーの境界線 */
-}
-
-/* 情報の各項目（スコア、タイマーなど） */
-.info-item {
-  text-align: center;          /* 中央揃え */
-}
-
-/* 情報項目のラベル（「スコア」「時間」など） */
-.info-label {
-  display: block;              /* ブロック要素として表示 */
-  font-size: 0.9rem;           /* 小さめのフォント */
-  color: #64748b;              /* グレーのテキスト */
-  margin-bottom: 5px;          /* 下に5pxの余白 */
-}
-
-/* 情報項目の値（数値部分） */
-.info-value {
-  font-size: 1.8rem;           /* 大きなフォント */
-  font-weight: bold;           /* 太字 */
-  color: var(--primary-color); /* メインカラー */
-}
-
-/* ===========================================
-   7. 問題表示エリア
-   ========================================== */
-
-/* 問題を表示するエリア */
-.question-area {
-  /* 水色のグラデーション背景 */
-  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-  border: 2px solid #7dd3fc;   /* 水色の境界線 */
-  border-radius: 15px;         /* 角を丸く */
-  padding: 30px;               /* 内側の余白 */
-  text-align: center;          /* 中央揃え */
-  min-height: 120px;           /* 最小高さ */
-  display: flex;               /* フレックスボックス */
-  justify-content: center;     /* 水平方向の中央揃え */
-  align-items: center;         /* 垂直方向の中央揃え */
-  transition: all 0.3s ease;   /* なめらかな変化 */
-}
-
-/* 問題文のテキスト */
-.question-text {
-  font-size: 2rem;             /* 大きなフォント */
-  font-weight: bold;           /* 太字 */
-  color: var(--text-dark);     /* 濃い色のテキスト */
-}
-
-/* ===========================================
-   8. 結果表示（正解・不正解）
-   ========================================== */
-
-/* 結果表示エリア */
-.result-display {
-  text-align: center;          /* 中央揃え */
-  font-size: 2.5rem;           /* 大きなフォント */
-  font-weight: bold;           /* 太字 */
-  height: 50px;               /* 高さを固定 */
-}
-
-/* 正解時のスタイル */
-.result-display.correct {
-  color: var(--correct-color); /* 緑色のテキスト */
-  animation: bounce 0.5s ease; /* バウンスアニメーション */
-}
-
-/* 不正解時のスタイル */
-.result-display.incorrect {
-  color: var(--incorrect-color); /* 赤色のテキスト */
-  animation: shake 0.5s ease;   /* 揺れるアニメーション */
-}
-
-/* バウンス（跳ねる）アニメーション */
-@keyframes bounce {
-  0%, 100% { transform: scale(1); }     /* 通常サイズ */
-  50% { transform: scale(1.2); }        /* 1.2倍に拡大 */
-}
-
-/* シェイク（揺れる）アニメーション */
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }    /* 元の位置 */
-  25% { transform: translateX(-10px); }     /* 左に10px移動 */
-  75% { transform: translateX(10px); }      /* 右に10px移動 */
-}
-
-/* ===========================================
-   9. 音声認識結果表示エリア
-   ========================================== */
-
-/* 認識されたテキストを表示するエリア */
-.recognized-text-area {
-  background: #f8fafc;         /* 薄いグレーの背景 */
-  border-radius: 10px;         /* 角を丸く */
-  padding: 15px;               /* 内側の余白 */
-  min-height: 80px;            /* 最小高さ */
-  text-align: center;          /* 中央揃え */
-  color: #475569;              /* グレーのテキスト */
-}
-
-/* 確定した認識テキスト */
-#recognized-text {
-  font-size: 1.2rem;           /* やや大きなフォント */
-}
-
-/* 暫定的な認識テキスト（認識中） */
-#interim-text {
-  font-size: 1rem;             /* 通常のフォントサイズ */
-  color: #94a3b8;              /* 薄いグレーのテキスト */
-}
-
-/* ===========================================
-   10. コントロールボタン
-   ========================================== */
-
-/* ボタンのコンテナ */
-.controls {
-  display: flex;               /* フレックスボックス */
-  justify-content: center;     /* 中央揃え */
-  gap: 15px;                  /* ボタン間に15pxの間隔 */
-}
-
-/* 基本的なボタンスタイル */
-.btn {
-  padding: 12px 24px;          /* 内側の余白 */
-  border: none;                /* 境界線なし */
-  border-radius: 8px;          /* 角を丸く */
-  font-size: 1rem;             /* フォントサイズ */
-  font-weight: 600;            /* 太字 */
-  cursor: pointer;             /* マウスカーソルをポインターに */
-  transition: all 0.3s ease;   /* なめらかな変化 */
-}
-
-/* メインボタン（開始ボタンなど） */
-.btn-primary {
-  /* 紫色のグラデーション背景 */
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  color: white;                /* 白いテキスト */
-}
-
-/* メインボタンにマウスを乗せた時（無効でない場合のみ） */
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px); /* 少し上に移動 */
-  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3); /* 影を付ける */
-}
-
-/* 危険なボタン（停止ボタンなど） */
-.btn-danger {
-  background: #ef4444;         /* 赤い背景 */
-  color: white;                /* 白いテキスト */
-}
-
-/* 危険ボタンにマウスを乗せた時 */
-.btn-danger:hover {
-  background: #dc2626;         /* より濃い赤 */
-}
-
-/* 無効化されたボタン */
-.btn:disabled {
-  opacity: 0.6;                /* 薄く表示 */
-  cursor: not-allowed;         /* 使用不可カーソル */
-}
-
-/* ===========================================
-   11. マイク許可状態の表示
-   ========================================== */
-
-/* マイク許可要求の表示エリア */
-.mic-status {
-  text-align: center;          /* 中央揃え */
-  background: #fffbeb;         /* 薄い黄色の背景 */
-  padding: 15px;               /* 内側の余白 */
-  border-radius: 10px;         /* 角を丸く */
-  border: 1px solid #fef3c7;   /* 黄色の境界線 */
-  color: #b45309;              /* オレンジ色のテキスト */
-}
-
-/* ===========================================
-   12. モーダル（ポップアップ）ウィンドウ
-   ========================================== */
-
-/* モーダルの背景オーバーレイ */
-.modal-overlay {
-  position: fixed;             /* 画面に固定 */
-  top: 0;                     /* 上端から */
-  left: 0;                    /* 左端から */
-  width: 100%;                /* 画面全体の幅 */
-  height: 100%;               /* 画面全体の高さ */
-  background: rgba(0, 0, 0, 0.6); /* 半透明の黒い背景 */
-  display: flex;              /* フレックスボックス */
-  justify-content: center;    /* 水平方向の中央揃え */
-  align-items: center;        /* 垂直方向の中央揃え */
-  z-index: 1000;             /* 最前面に表示 */
-}
-
-/* モーダルのコンテンツ部分 */
-.modal-content {
-  background: white;          /* 白い背景 */
-  padding: 40px;              /* 内側の余白 */
-  border-radius: 20px;        /* 角を丸く */
-  text-align: center;         /* 中央揃え */
-  box-shadow: 0 20px 40px rgba(0,0,0,0.2); /* 影を付ける */
-  animation: slide-up 0.5s ease-out; /* スライドアップアニメーション */
-}
-
-/* モーダルのタイトル */
-.modal-content h2 {
-  font-size: 2.5rem;          /* 大きなフォント */
-  margin-bottom: 20px;        /* 下に余白 */
-  color: var(--primary-color); /* メインカラー */
-}
-
-/* 最終スコア表示エリア */
-.final-score {
-  margin-bottom: 30px;        /* 下に余白 */
-  font-size: 1.2rem;          /* やや大きなフォント */
-}
-
-/* 最終スコアの各項目 */
-.final-score p {
-  margin: 10px 0;             /* 上下に余白 */
-}
-
-/* 最終スコアの数値部分 */
-.final-score span {
-  font-weight: bold;          /* 太字 */
-  font-size: 1.5rem;          /* 大きなフォント */
-}
-
-/* スライドアップアニメーション */
-@keyframes slide-up {
-  from {
-    transform: translateY(50px); /* 下から50px */
-    opacity: 0;                 /* 透明 */
-  }
-  to {
-    transform: translateY(0);   /* 元の位置 */
-    opacity: 1;                 /* 不透明 */
-  }
-}
-
-/* ===========================================
-   13. 難易度選択画面
-   ========================================== */
-
-/* 難易度選択エリア */
-.difficulty-selector {
-  text-align: center;         /* 中央揃え */
-  padding: 30px;              /* 内側の余白 */
-  background: #f8fafc;        /* 薄いグレーの背景 */
-  border-radius: 15px;        /* 角を丸く */
-  margin-bottom: 20px;        /* 下に余白 */
-}
-
-/* 難易度選択のタイトル */
-.difficulty-selector h2 {
-  margin-bottom: 20px;        /* 下に余白 */
-  color: var(--text-dark);    /* 濃い色のテキスト */
-}
-
-/* 選択された難易度ボタン */
-.difficulty-btn.selected {
-  background: var(--primary-color); /* メインカラーの背景 */
-  color: var(--text-light);    /* 白いテキスト */
-  border-color: var(--primary-color); /* メインカラーの境界線 */
-}
-
-/* ===========================================
-   14. レスポンシブデザイン（スマートフォン対応）
-   ========================================== */
-
-/* 画面幅が768px以下の場合（タブレット・スマートフォン） */
-@media (max-width: 768px) {
-  /* 全体の余白を減らす */
-  body {
-    padding: 10px;
-  }
-  
-  /* ヘッダーのタイトルサイズを小さく */
-  .header h1 {
-    font-size: 1.8rem;
-  }
-  
-  /* メインコンテンツの余白を減らす */
-  .main-content {
-    padding: 15px;
-  }
-  
-  /* 問題文のサイズを小さく */
-  .question-text {
-    font-size: 1.5rem;
-  }
-  
-  /* ゲーム情報を縦並びに変更 */
-  .game-info {
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  /* 情報項目を横並びに */
-  .info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    text-align: left;
-  }
-  
-  /* モーダルの余白を減らす */
-  .modal-content {
-    padding: 20px;
-    margin: 10px;
-    max-width: 90vw;
-  }
-  
-  /* コントロールボタンを縦並びに */
-  .controls {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  /* ボタンを全幅に */
-  .btn {
-    width: 100%;
-  }
-}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;justify-content:center;align-items:center;z-index:1000}
+.modal-content{background:#fff;padding:34px;border-radius:20px;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,.2)}
+.modal-content h2{font-size:2.2rem;margin-bottom:16px;color:var(--primary-color)}
+.final-score{margin-bottom:18px;font-size:1.1rem}
