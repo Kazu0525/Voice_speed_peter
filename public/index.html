@@ -1,102 +1,106 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>音声入力ゲーム</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🥢 ラーメン屋 - 音声タイピングゲーム</title>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 <div class="container">
-<div class="header">
-  <div class="header-content">
-    <h1>🎤 音声入力ゲーム 🍣</h1>
-    <p>表示されるお題を素早く正確に読み上げよう！</p>
-  </div>
-  <div class="sound-control">
-    <button id="sound-toggle" class="btn-sound">🔊</button>
-  </div>
-</div>
-
-<div class="main-content">
-<div id="mic-status" class="mic-status">
-  <p>まず、ゲームをプレイするためにマイクの許可をお願いします。</p>
-  <button class="btn btn-primary" id="mic-permission-button">マイクを許可</button>
-</div>
-
-<div id="difficulty-selector" class="difficulty-selector" style="display: none;">
-  <h2>難易度を選択してください</h2>
-  <div class="controls">
-    <button class="btn btn-secondary difficulty-btn" data-difficulty="easy">簡単</button>
-    <button class="btn btn-secondary difficulty-btn" data-difficulty="normal">普通</button>
-    <button class="btn btn-secondary difficulty-btn" data-difficulty="hard">難しい</button>
-  </div>
-</div>
-
-<div class="game-container" style="display: none;">
-  <div class="game-info">
-    <div class="info-item">
-      <span class="info-label">スコア</span>
-      <span id="score" class="info-value">0</span>
+  <div class="header">
+    <div class="header-content">
+      <h1>🥢 ラーメン屋 音声入力ゲーム 🍜</h1>
+      <p>お客さんの注文を <b>読み上げて</b> 提供しよう！（タイプでもOK）</p>
     </div>
-    <div class="info-item">
-      <span class="info-label">残り時間</span>
-      <span id="timer" class="info-value">60</span>
-    </div>
-    <div class="info-item">
-      <span class="info-label">コンボ</span>
-      <span id="combo" class="info-value">0</span>
+    <div class="sound-control">
+      <button id="sound-toggle" class="btn-sound" title="BGM on/off">🔊</button>
     </div>
   </div>
 
-  <div id="question-area" class="question-area">
-    <p id="question-text" class="question-text">ここに課題文が表示されます</p>
-  </div>
-
-  <div id="result-display" class="result-display"></div>
-
-  <div id="recognized-text-area" class="recognized-text-area">
-    <p id="recognized-text">ここに認識されたテキストが表示されます...</p>
-    <p id="interim-text" class="interim-text"></p>
-  </div>
-
-  <div class="controls">
-    <button class="btn btn-primary" id="start-button">ゲーム開始</button>
-    <button class="btn btn-danger" id="stop-button" style="display: none;">ゲーム終了</button>
-  </div>
-</div>
-
-<div id="game-over-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content">
-    <h2>ゲームオーバー！</h2>
-    <div class="final-score">
-      <p>最終スコア: <span id="final-score">0</span></p>
-      <p>最大コンボ: <span id="max-combo">0</span></p>
-      <p>正解数: <span id="correct-count">0</span></p>
-      <p>ミス数: <span id="miss-count">0</span></p>
+  <div class="main-content">
+    <div id="mic-status" class="mic-status">
+      <p>まず、ゲームをプレイするためにマイクの許可をお願いします。</p>
+      <button class="btn btn-primary" id="mic-permission-button">マイクを許可</button>
     </div>
-    <button class="btn btn-primary" id="restart-button">もう一度プレイ</button>
+
+    <div id="difficulty-selector" class="difficulty-selector" style="display:none;">
+      <h2>難易度を選択してください</h2>
+      <div class="controls">
+        <button class="btn btn-secondary difficulty-btn" data-difficulty="easy">簡単</button>
+        <button class="btn btn-secondary difficulty-btn" data-difficulty="normal">普通</button>
+        <button class="btn btn-secondary difficulty-btn" data-difficulty="hard">難しい</button>
+      </div>
+    </div>
+
+    <div class="game-container" style="display:none;">
+      <div class="game-info">
+        <div class="info-item">
+          <span class="info-label">スコア</span>
+          <span id="score" class="info-value">0</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">残り時間</span>
+          <span id="timer" class="info-value">60</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">コンボ</span>
+          <span id="combo" class="info-value">0</span>
+        </div>
+      </div>
+
+      <!-- ラーメン屋のシーン -->
+      <div class="ramen-scene">
+        <div class="customer">
+          <div class="customer-emoji" title="お客さん">🧑‍🍳</div>
+          <div class="speech-bubble">
+            <span id="question-text" class="question-text">注文をお待ちしています...</span>
+          </div>
+        </div>
+        <div class="counter">
+          <div class="ticket">伝票 #<span id="order-number">1</span></div>
+          <div class="bowl" id="ramen-bowl">🍜</div>
+        </div>
+      </div>
+
+      <div id="result-display" class="result-display"></div>
+
+      <div id="recognized-text-area" class="recognized-text-area">
+        <p id="recognized-text">ここに認識されたテキストが表示されます...</p>
+        <p id="interim-text" class="interim-text"></p>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" id="start-button">ゲーム開始</button>
+        <button class="btn btn-danger" id="stop-button" style="display:none;">ゲーム終了</button>
+      </div>
+    </div>
+
+    <div id="game-over-modal" class="modal-overlay" style="display:none;">
+      <div class="modal-content">
+        <h2>ゲームオーバー！</h2>
+        <div class="final-score">
+          <p>最終スコア: <span id="final-score">0</span></p>
+          <p>最大コンボ: <span id="max-combo">0</span></p>
+          <p>正解数: <span id="correct-count">0</span></p>
+          <p>ミス数: <span id="miss-count">0</span></p>
+        </div>
+        <button class="btn btn-primary" id="restart-button">もう一度プレイ</button>
+      </div>
+    </div>
   </div>
-</div>
-</div>
 </div>
 
 <!-- BGM音声 -->
 <audio id="bgm" loop preload="auto">
   <source src="zawazawa.mp3" type="audio/mpeg">
 </audio>
-
-<!-- 緊張感のあるBGM（時間が少なくなった時用） -->
 <audio id="tense-bgm" loop preload="auto">
   <source src="zawazawa.mp3" type="audio/mpeg">
 </audio>
 
-<!-- wanaKana.jsライブラリ（ひらがな変換用） -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/wanakana/5.3.1/wanakana.min.js"></script>
-<!-- questions.jsを読み込み -->
 <script src="questions.js"></script>
-<!-- メインスクリプトを読み込み -->
 <script src="script.js"></script>
-
 </body>
 </html>
