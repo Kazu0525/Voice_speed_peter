@@ -341,3 +341,153 @@ document.addEventListener("DOMContentLoaded", () => {
   // 参考：AのstopBtn処理があるなら、そこでも戻るボタンは残してOK
   // （「トップに戻る」で完全に抜ける想定のため）
 });
+
+/* ====== 音声認識（Web Speech API）を追加：追記だけでOK ====== */
+document.addEventListener("DOMContentLoaded", () => {
+  // 既存DOM参照（Aで使っているIDを流用）
+  const game            = document.querySelector(".game-container");
+  const resultDisplayEl = document.getElementById("result-display");
+  const questionTextEl  = document.getElementById("question-text");
+  const recognizedTextEl= document.getElementById("recognized-text");
+  const interimTextEl   = document.getElementById("interim-text");
+  const startBtn        = document.getElementById("start-button");
+  const stopBtn         = document.getElementById("stop-button");
+  const backBtn         = document.getElementById("back-button"); // さっき追加した戻るボタン
+  const scoreEl         = document.getElementById("score");
+  const comboEl         = document.getElementById("combo");
+  const timerEl         = document.getElementById("timer");
+
+  // 既存のスコア系がグローバルで無ければローカルでも動くようフォールバック
+  let score = Number(scoreEl?.textContent || 0);
+  let combo = Number(comboEl?.textContent || 0);
+  let timeLeft = Number(timerEl?.textContent || 60);
+
+  // 直近の問題文をとる（既存変数 currentQuestion があればそれを使う）
+  const getCurrentQuestion = () => (window.currentQuestion || questionTextEl.textContent || "");
+
+  const updateHUD = () => {
+    if (scoreEl) scoreEl.textContent = String(score);
+    if (comboEl) comboEl.textContent = String(combo);
+    if (timerEl) timerEl.textContent = String(timeLeft);
+  };
+
+  // ---- 音声認識セットアップ ----
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recog = null;
+  let recognizing = false;
+
+  function setupRecognition() {
+    if (!SpeechRecognition) {
+      console.warn("このブラウザは音声認識に未対応です。Chrome系推奨。");
+      return;
+    }
+    recog = new SpeechRecognition();
+    recog.lang = "ja-JP";
+    recog.continuous = true;       // 継続して聞く
+    recog.interimResults = true;   // 暫定結果も取る
+
+    recog.onresult = (e) => {
+      let interim = "", finalText = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        const t = r[0].transcript.trim();
+        if (r.isFinal) finalText += t;
+        else interim += t;
+      }
+      if (interimTextEl) interimTextEl.textContent = interim;
+      if (finalText) {
+        if (recognizedTextEl) recognizedTextEl.textContent = finalText;
+        checkAnswer(finalText);
+      }
+    };
+
+    // iOS/Safariはたまに勝手に終わるので、ゲーム中なら自動再開
+    recog.onend = () => {
+      recognizing = false;
+      if (game && game.style.display === "flex") {
+        startRecognition();
+      }
+    };
+
+    recog.onerror = (ev) => {
+      console.warn("Speech error:", ev.error);
+      recognizing = false;
+    };
+  }
+
+  function startRecognition() {
+    if (!recog) setupRecognition();
+    if (!recog || recognizing) return;
+    try {
+      recog.start();
+      recognizing = true;
+    } catch (e) {
+      // start多重呼び出し時に例外が出ることがある
+    }
+  }
+
+  function stopRecognition() {
+    if (recog && recognizing) {
+      try { recog.stop(); } catch (e) {}
+    }
+  }
+
+  // ---- 判定（ゆるめの一致。空白・記号差異を無視）----
+  function normalize(s) {
+    if (!s) return "";
+    let n = s.replace(/\s/g, "")
+             .replace(/[、。,.!！?？ー－〜~]/g, "")
+             .toLowerCase();
+    // かな違い吸収（wanakanaあれば）→両方ひらがな化
+    if (window.wanakana) n = wanakana.toHiragana(n);
+    return n;
+  }
+
+  function checkAnswer(spoken) {
+    const target = normalize(getCurrentQuestion());
+    const said   = normalize(spoken);
+
+    resultDisplayEl.classList.remove("correct", "incorrect");
+
+    if (said === target && target !== "") {
+      resultDisplayEl.textContent = "提供成功！";
+      resultDisplayEl.classList.add("correct");
+      score += 10; combo += 1; updateHUD();
+      // 次の注文へ（既存の nextQuestion があればそれを呼ぶ）
+      if (typeof window.nextQuestion === "function") {
+        window.nextQuestion();
+      } else if (window.__ramen?.nextQuestion) {
+        window.__ramen.nextQuestion();
+      }
+    } else {
+      // ミス表示だけ（次へは進めない）
+      resultDisplayEl.textContent = "注文ミス…";
+      resultDisplayEl.classList.add("incorrect");
+      combo = 0; updateHUD();
+    }
+  }
+
+  // ---- ゲームの開始/終了に音声認識を紐づけ ----
+  startBtn?.addEventListener("click", () => {
+    startRecognition();
+  });
+
+  stopBtn?.addEventListener("click", () => {
+    stopRecognition();
+  });
+
+  backBtn?.addEventListener("click", () => {
+    stopRecognition();
+  });
+
+  // 難易度ボタン（Aパッチで開始しているなら、ここで追加の保険）
+  document.querySelectorAll(".difficulty-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      // 難易度選択→開始直後に認識ON
+      setTimeout(() => startRecognition(), 0);
+    });
+  });
+
+  // 初期化
+  setupRecognition();
+});
